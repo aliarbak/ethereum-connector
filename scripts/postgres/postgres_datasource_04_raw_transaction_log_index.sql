@@ -1,0 +1,1 @@
+create index if not exists "IX_raw_transaction_log_contract_address_chain_id_block_number" on raw_transaction_log (contract_address, chain_id, block_number ASC, index ASC);

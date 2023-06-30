@@ -1,0 +1,364 @@
+definitions:
+  big.Int:
+    type: object
+  chainmodel.CreateChainInput:
+    properties:
+      blockNumber:
+        type: integer
+      blockNumberReadPeriodInMs:
+        type: integer
+      blockNumberWaitPeriodInMs:
+        type: integer
+      concurrentBlockReadLimit:
+        type: integer
+      id:
+        type: integer
+      paused:
+        type: boolean
+      rpcUrl:
+        type: string
+    required:
+    - id
+    - rpcUrl
+    type: object
+  chainmodel.PatchChainInput:
+    properties:
+      blockNumberReadPeriodInMs:
+        type: integer
+      blockNumberWaitPeriodInMs:
+        type: integer
+      concurrentBlockReadLimit:
+        type: integer
+      paused:
+        type: boolean
+      rpcUrl:
+        type: string
+    type: object
+  model.Abi:
+    properties:
+      anonymous:
+        type: boolean
+      inputs:
+        items:
+          $ref: '#/definitions/model.AbiInput'
+        type: array
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  model.AbiInput:
+    properties:
+      indexed:
+        type: boolean
+      internalType:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  model.Chain:
+    properties:
+      blockNumber:
+        $ref: '#/definitions/big.Int'
+      blockNumberReadPeriodInMS:
+        type: integer
+      blockNumberWaitPeriodInMS:
+        type: integer
+      concurrentBlockReadLimit:
+        type: integer
+      id:
+        type: integer
+      paused:
+        type: boolean
+      rpcUrl:
+        type: string
+      updatedAt:
+        type: integer
+    type: object
+  model.SchemaEvent:
+    properties:
+      alias:
+        type: string
+      name:
+        type: string
+    type: object
+  model.SchemaFilter:
+    properties:
+      chainId:
+        type: integer
+      contractAddress:
+        type: string
+      id:
+        type: string
+      schemaId:
+        type: string
+      sync:
+        $ref: '#/definitions/model.SchemaFilterSync'
+    type: object
+  model.SchemaFilterSync:
+    properties:
+      completed:
+        type: boolean
+      currentBlockNumber:
+        type: integer
+      fromBlockNumber:
+        type: integer
+      lastLogIndex:
+        type: integer
+      toBlockNumber:
+        type: integer
+    type: object
+  schemamodel.CreateSchemaFilterInput:
+    properties:
+      chainId:
+        type: integer
+      contractAddress:
+        type: string
+      sync:
+        type: boolean
+    required:
+    - chainId
+    - contractAddress
+    type: object
+  schemamodel.CreateSchemaInput:
+    properties:
+      abi:
+        items:
+          $ref: '#/definitions/model.Abi'
+        type: array
+      events:
+        items:
+          $ref: '#/definitions/model.SchemaEvent'
+        type: array
+      name:
+        type: string
+    required:
+    - abi
+    - events
+    - name
+    type: object
+  schemamodel.SchemaOutput:
+    properties:
+      abi:
+        items:
+          $ref: '#/definitions/model.Abi'
+        type: array
+      events:
+        items:
+          $ref: '#/definitions/model.SchemaEvent'
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /chains:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Chain'
+            type: array
+      summary: Retrieve all chains
+      tags:
+      - chains
+    post:
+      parameters:
+      - description: Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainmodel.CreateChainInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Chain'
+      summary: Register a new chain
+      tags:
+      - chains
+  /chains/{id}:
+    get:
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Chain'
+      summary: Retrieve chain by id
+      tags:
+      - chains
+    patch:
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainmodel.PatchChainInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Chain'
+      summary: Update a chain
+      tags:
+      - chains
+  /healthcheck:
+    get:
+      consumes:
+      - '*/*'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Show the status of server
+      tags:
+      - HealthCheck
+  /schemas:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/schemamodel.SchemaOutput'
+            type: array
+      summary: Retrieve all schemas
+      tags:
+      - schemas
+    post:
+      parameters:
+      - description: Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/schemamodel.CreateSchemaInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/schemamodel.SchemaOutput'
+      summary: Create a new schema
+      tags:
+      - schemas
+  /schemas/{id}:
+    get:
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemamodel.SchemaOutput'
+      summary: Retrieve schema by id
+      tags:
+      - schemas
+  /schemas/{id}/filters:
+    get:
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.SchemaFilter'
+            type: array
+      summary: Retrieve schema filters by schema id
+      tags:
+      - schemas
+    post:
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/schemamodel.CreateSchemaFilterInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.SchemaFilter'
+      summary: Create a new schema filter
+      tags:
+      - schemas
+  /schemas/{id}/filters/{filterId}:
+    get:
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: filterId
+        in: path
+        name: filterId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.SchemaFilter'
+      summary: Retrieve schema filters by schema filter id
+      tags:
+      - schemas
+swagger: "2.0"
