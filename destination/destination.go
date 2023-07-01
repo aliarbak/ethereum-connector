@@ -19,6 +19,7 @@ const (
 const (
 	destinationPostgres = "postgres"
 	destinationKafka    = "kafka"
+	destinationRabbitMQ = "rabbitmq"
 )
 
 type Destination interface {
@@ -41,6 +42,9 @@ func NewFactory(ctx context.Context, config configs.DestinationConfig) (Factory,
 		break
 	case destinationKafka:
 		factory = newKafkaFactory(config.Kafka)
+		break
+	case destinationRabbitMQ:
+		factory = newRabbitMQFactory(config.RabbitMQ)
 		break
 	default:
 		return nil, errors.New("invalid destination type: %s", config.Destination)

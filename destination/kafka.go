@@ -17,14 +17,14 @@ type kafkaDestinationFactory struct {
 }
 
 type kafkaDestination struct {
-	producer                      sarama.SyncProducer
-	deliveryGuarantee             DeliveryGuarantee
-	bootstrapServers              []string
-	blocksTopicName               string
-	transactionsTopicName         string
-	transactionLogsTopicName      string
-	rawTransactionLogsTopicName   string
-	sendTransferLogsToAliasTopics bool
+	producer                         sarama.SyncProducer
+	deliveryGuarantee                DeliveryGuarantee
+	bootstrapServers                 []string
+	blocksTopicName                  string
+	transactionsTopicName            string
+	transactionLogsTopicName         string
+	rawTransactionLogsTopicName      string
+	sendTransactionLogsToAliasTopics bool
 }
 
 func newKafkaFactory(config configs.KafkaDestinationConfig) Factory {
@@ -55,14 +55,14 @@ func (f *kafkaDestinationFactory) CreateDestination(context.Context) (dest Desti
 	}
 
 	return &kafkaDestination{
-		producer:                      producer,
-		deliveryGuarantee:             DeliveryGuarantee(f.config.DeliveryGuarantee),
-		blocksTopicName:               f.config.BlocksTopicName,
-		transactionsTopicName:         f.config.TransactionsTopicName,
-		transactionLogsTopicName:      f.config.TransactionLogsTopicName,
-		rawTransactionLogsTopicName:   f.config.RawTransactionLogsTopicName,
-		sendTransferLogsToAliasTopics: f.config.SendTransferLogsToAliasTopics,
-		bootstrapServers:              bootstrapServers,
+		producer:                         producer,
+		deliveryGuarantee:                DeliveryGuarantee(f.config.DeliveryGuarantee),
+		blocksTopicName:                  f.config.BlocksTopicName,
+		transactionsTopicName:            f.config.TransactionsTopicName,
+		transactionLogsTopicName:         f.config.TransactionLogsTopicName,
+		rawTransactionLogsTopicName:      f.config.RawTransactionLogsTopicName,
+		sendTransactionLogsToAliasTopics: f.config.SendTransactionLogsToAliasTopics,
+		bootstrapServers:                 bootstrapServers,
 	}, err
 }
 
@@ -78,17 +78,20 @@ func (r kafkaDestination) SendBlock(_ context.Context, block model.Block) error 
 
 	messages, err := r.prepareMessages(block)
 	if err != nil {
-		r.producer.AbortTxn()
-		return err
+		return r.abortTxn(err)
 	}
 
 	err = r.producer.SendMessages(messages)
 	if err != nil {
-		r.producer.AbortTxn()
-		return err
+		return r.abortTxn(err)
 	}
 
-	return r.producer.CommitTxn()
+	err = r.producer.CommitTxn()
+	if err != nil {
+		return errors.From(err, "kafka transaction commit failed")
+	}
+
+	return nil
 }
 
 func (r kafkaDestination) SendSyncLogs(_ context.Context, block model.Block) error {
@@ -99,22 +102,34 @@ func (r kafkaDestination) SendSyncLogs(_ context.Context, block model.Block) err
 
 	messages, err := r.prepareSyncMessages(block)
 	if err != nil {
-		r.producer.AbortTxn()
-		return err
+		return r.abortTxn(err)
 	}
 
 	err = r.producer.SendMessages(messages)
 	if err != nil {
-		r.producer.AbortTxn()
-		return err
+		return r.abortTxn(err)
 	}
 
-	return r.producer.CommitTxn()
+	err = r.producer.CommitTxn()
+	if err != nil {
+		return errors.From(err, "kafka transaction commit failed")
+	}
+
+	return nil
+}
+
+func (r kafkaDestination) abortTxn(err error) error {
+	abortErr := r.producer.AbortTxn()
+	if abortErr != nil {
+		return errors.From(abortErr, "kafka transaction abort failed, original error: %s", err.Error())
+	}
+
+	return err
 }
 
 func (r kafkaDestination) prepareMessages(block model.Block) (messages []*sarama.ProducerMessage, err error) {
 	if len(r.blocksTopicName) > 0 {
-		blockMessage, err := newMessage(r.blocksTopicName, block.Number.String(), newBlockMessage(block))
+		blockMessage, err := r.newMessage(r.blocksTopicName, block.Number.String(), newBlockMessage(block))
 		if err != nil {
 			return messages, errors.From(err, "block message initialization failed, blockNumber: %s", block.Number.String())
 		}
@@ -124,7 +139,7 @@ func (r kafkaDestination) prepareMessages(block model.Block) (messages []*sarama
 
 	for _, transaction := range block.Transactions {
 		if len(r.transactionsTopicName) > 0 {
-			transactionMessage, err := newMessage(r.transactionsTopicName, transaction.Hash, newTransactionMessage(block, transaction))
+			transactionMessage, err := r.newMessage(r.transactionsTopicName, transaction.Hash, newTransactionMessage(block, transaction))
 			if err != nil {
 				return messages, errors.From(err, "transaction message initialization failed, txHash: %s", transaction.Hash)
 			}
@@ -134,7 +149,7 @@ func (r kafkaDestination) prepareMessages(block model.Block) (messages []*sarama
 
 		for _, transactionLog := range transaction.Logs {
 			if len(r.rawTransactionLogsTopicName) > 0 {
-				rawTransactionLogMessage, err := newMessage(r.rawTransactionLogsTopicName, transactionLog[model.ContractAddressLogField].(string), transactionLog[model.RawDataLogField])
+				rawTransactionLogMessage, err := r.newMessage(r.rawTransactionLogsTopicName, transactionLog[model.ContractAddressLogField].(string), transactionLog[model.RawDataLogField])
 				if err != nil {
 					return messages, fmt.Errorf("raw transaction log message initialization failed, txHash: %s, log hash: %s, err: %s", transaction.Hash, transactionLog[model.LogHashLogField].(string), err.Error())
 				}
@@ -148,7 +163,7 @@ func (r kafkaDestination) prepareMessages(block model.Block) (messages []*sarama
 
 			transactionLogMessageValue := newTransactionLogMessage(block, transaction, transactionLog)
 			if len(r.transactionLogsTopicName) > 0 {
-				transactionLogMessage, err := newMessage(r.transactionLogsTopicName, transactionLog[model.ContractAddressLogField].(string), transactionLogMessageValue)
+				transactionLogMessage, err := r.newMessage(r.transactionLogsTopicName, transactionLog[model.ContractAddressLogField].(string), transactionLogMessageValue)
 				if err != nil {
 					return messages, fmt.Errorf("transaction log message initialization failed, txHash: %s, log hash: %s, err: %s", transaction.Hash, transactionLog[model.LogHashLogField].(string), err.Error())
 				}
@@ -156,8 +171,8 @@ func (r kafkaDestination) prepareMessages(block model.Block) (messages []*sarama
 				messages = append(messages, transactionLogMessage)
 			}
 
-			if r.sendTransferLogsToAliasTopics {
-				transactionLogMessage, err := newMessage(transactionLog[model.EventAliasLogField].(string), transactionLog[model.ContractAddressLogField].(string), transactionLogMessageValue)
+			if r.sendTransactionLogsToAliasTopics {
+				transactionLogMessage, err := r.newMessage(transactionLog[model.EventAliasLogField].(string), transactionLog[model.ContractAddressLogField].(string), transactionLogMessageValue)
 				if err != nil {
 					return messages, fmt.Errorf("transaction log message for alias topic initialization failed, txHash: %s, log hash: %s, err: %s", transaction.Hash, transactionLog[model.LogHashLogField].(string), err.Error())
 				}
@@ -183,7 +198,7 @@ func (r kafkaDestination) prepareSyncMessages(block model.Block) (messages []*sa
 
 			transactionLogMessageValue := newTransactionLogMessage(block, transaction, transactionLog)
 			if len(r.transactionLogsTopicName) > 0 {
-				transactionLogMessage, err := newMessage(r.transactionLogsTopicName, transactionLog[model.ContractAddressLogField].(string), transactionLogMessageValue)
+				transactionLogMessage, err := r.newMessage(r.transactionLogsTopicName, transactionLog[model.ContractAddressLogField].(string), transactionLogMessageValue)
 				if err != nil {
 					return messages, fmt.Errorf("transaction log message initialization failed, txHash: %s, log hash: %s, err: %s", transaction.Hash, transactionLog[model.LogHashLogField].(string), err.Error())
 				}
@@ -191,8 +206,8 @@ func (r kafkaDestination) prepareSyncMessages(block model.Block) (messages []*sa
 				messages = append(messages, transactionLogMessage)
 			}
 
-			if r.sendTransferLogsToAliasTopics {
-				transactionLogMessage, err := newMessage(transactionLog[model.EventAliasLogField].(string), transactionLog[model.ContractAddressLogField].(string), transactionLogMessageValue)
+			if r.sendTransactionLogsToAliasTopics {
+				transactionLogMessage, err := r.newMessage(transactionLog[model.EventAliasLogField].(string), transactionLog[model.ContractAddressLogField].(string), transactionLogMessageValue)
 				if err != nil {
 					return messages, fmt.Errorf("transaction log message for alias topic initialization failed, txHash: %s, log hash: %s, err: %s", transaction.Hash, transactionLog[model.LogHashLogField].(string), err.Error())
 				}
@@ -221,7 +236,7 @@ func (r kafkaDestination) init(context.Context) error {
 	return nil
 }
 
-func newMessage(topic string, key string, value interface{}) (message *sarama.ProducerMessage, err error) {
+func (r kafkaDestination) newMessage(topic string, key string, value interface{}) (message *sarama.ProducerMessage, err error) {
 	var valueJson []byte
 	switch value.(type) {
 	case []byte:

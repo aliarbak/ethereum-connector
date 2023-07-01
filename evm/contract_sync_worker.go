@@ -36,12 +36,12 @@ func RunContractSyncWorkers(ctx context.Context, dataSourceFactory datasource.Fa
 func RunContractSyncWorker(ctx context.Context, schemaFilterId string, dataSourceFactory datasource.Factory, destinationFactory destination.Factory) error {
 	dataSource, err := dataSourceFactory.CreateDataSource(ctx)
 	if err != nil {
-		return errors.From(err, "datasource creation failed for sync listener for schemaFilterId: %s", schemaFilterId)
+		return errors.From(err, "datasource creation failed for sync worker for schemaFilterId: %s", schemaFilterId)
 	}
 
 	dest, err := destinationFactory.CreateDestination(ctx)
 	if err != nil {
-		return errors.From(err, "destination creation failed for sync listener for schemaFilterId: %s", schemaFilterId)
+		return errors.From(err, "destination creation failed for sync worker for schemaFilterId: %s", schemaFilterId)
 	}
 
 	go func() {
@@ -49,13 +49,13 @@ func RunContractSyncWorker(ctx context.Context, schemaFilterId string, dataSourc
 		defer dataSource.Close(ctx)
 		defer dest.Close(ctx)
 		if err != nil {
-			log.Fatal().Err(err).Msgf("sync listener crashed for schemaFilterId: %s", schemaFilterId)
+			log.Fatal().Err(err).Msgf("sync worker crashed for schemaFilterId: %s", schemaFilterId)
 		}
 
-		log.Info().Msgf("sync listener completed for schemaFilterId: %s", schemaFilterId)
+		log.Info().Msgf("sync worker completed for schemaFilterId: %s", schemaFilterId)
 	}()
 
-	log.Info().Msgf("sync listener is running for schemaFilterId: %s", schemaFilterId)
+	log.Info().Msgf("sync worker is running for schemaFilterId: %s", schemaFilterId)
 	return nil
 }
 
