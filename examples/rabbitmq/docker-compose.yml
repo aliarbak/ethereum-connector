@@ -1,0 +1,46 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:12
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: connector
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: sourcedb
+    networks:
+      - rabbitmq-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - rabbitmq-network
+
+  connector:
+    image: github.com/aliarbak/ethereum-connector
+    depends_on:
+      - rabbitmq
+      - db
+    ports:
+      - 8080:80
+    environment:
+      DATA_SOURCE: postgres
+      DATA_SOURCE_POSTGRES_CONNECTION_STRING: postgres://connector:password@db:5432/sourcedb
+      DATA_SOURCE_PERSIST_RAW_TRANSACTION_LOGS: true
+      DESTINATION: rabbitmq
+      DESTINATION_RABBITMQ_CONNECTION_STRING: amqp://guest:guest@rabbitmq:5672
+      DESTINATION_RABBITMQ_BLOCKS_EXCHANGE_NAME: blocks
+      DESTINATION_RABBITMQ_TRANSACTIONS_EXCHANGE_NAME: transactions
+      DESTINATION_RABBITMQ_TRANSACTION_LOGS_EXCHANGE_NAME: transaction_logs
+      DESTINATION_RABBITMQ_RAW_TRANSACTION_LOGS_EXCHANGE_NAME: raw_transaction_logs
+      DESTINATION_RABBITMQ_SEND_TRANSACTION_LOGS_TO_ALIAS_EXCHANGES: true
+    networks:
+      - rabbitmq-network
+
+networks:
+  rabbitmq-network:
+    driver: bridge

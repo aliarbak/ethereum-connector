@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package destination;
+
+option go_package = ".;protomessage";
+
+message Block {
+  string Number = 1;
+  string Block_Hash = 2;
+  int64 Chain_Id = 3;
+  int64 Time = 4;
+}
+
+message Transaction {
+  int64 Chain_Id = 1;
+  string Block_Number = 2;
+  string Block_Hash = 3;
+  int64 Block_Time = 4;
+  string Contract_Address = 5;
+  string Tx_To = 6;
+  string Tx_Hash = 7;
+  int64 Index = 8;
+  string Value = 9;
+}
+
+message TransactionLog {
+  string Log_Hash = 1;
+  int64 Chain_Id = 2;
+  string Tx_Hash = 3;
+  int64 Index = 4;
+  string Event_Name = 5;
+  string Event_Alias = 6;
+  string Contract_Address = 7;
+  string Block_Number = 8;
+  string Block_Hash = 9;
+  int64 Block_Time = 10;
+  int64 Tx_Index = 11;
+  string Tx_Contract_Address = 12;
+  string Tx_To = 13;
+  string Tx_Value = 14;
+  string Data = 15;
+}
+
+message RawTransactionLog {
+  string Log_Hash = 1;
+  int64 Chain_Id = 2;
+  string Tx_Hash = 3;
+  int64 Index = 4;
+  string Contract_Address = 5;
+  string Block_Number = 6;
+  string Block_Hash = 7;
+  int64 Block_Time = 8;
+  int64 Tx_Index = 9;
+  string Tx_Contract_Address = 10;
+  string Tx_To = 11;
+  string Tx_Value = 12;
+  string Data = 13;
+}
+
+

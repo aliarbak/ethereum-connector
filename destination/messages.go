@@ -64,6 +64,9 @@ func newTransactionMessage(block model.Block, transaction model.Transaction) tra
 func newTransactionLogMessage(block model.Block, transaction model.Transaction, log map[string]interface{}) transactionLogMessage {
 	message := transactionLogMessage{}
 	for k, v := range log {
+		if k == model.RawDataLogField {
+			continue
+		}
 		message[k] = v
 	}
 

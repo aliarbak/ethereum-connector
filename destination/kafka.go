@@ -35,6 +35,10 @@ func newKafkaFactory(config configs.KafkaDestinationConfig) Factory {
 }
 
 func (f *kafkaDestinationFactory) CreateDestination(context.Context) (dest Destination, err error) {
+	if f.config.DeliveryGuarantee != string(AtLeastOnceDeliveryGuarantee) && f.config.DeliveryGuarantee != string(AtMostOnceDeliveryGuarantee) {
+		return nil, errors.InvalidInput("invalid kafka destination delivery guarantee: %s", f.config.DeliveryGuarantee)
+	}
+
 	f.producerCount++
 	kafkaConfig := sarama.NewConfig()
 	kafkaConfig.Producer.Transaction.ID = fmt.Sprintf("%s-%d", f.config.ProducerTransactionId, f.producerCount)
@@ -48,10 +52,6 @@ func (f *kafkaDestinationFactory) CreateDestination(context.Context) (dest Desti
 	producer, err := sarama.NewSyncProducer(bootstrapServers, kafkaConfig)
 	if err != nil {
 		return nil, err
-	}
-
-	if f.config.DeliveryGuarantee != string(AtLeastOnceDeliveryGuarantee) && f.config.DeliveryGuarantee != string(AtMostOnceDeliveryGuarantee) {
-		return nil, errors.InvalidInput("invalid kafka destination delivery guarantee: %s", f.config.DeliveryGuarantee)
 	}
 
 	return &kafkaDestination{

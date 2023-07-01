@@ -34,11 +34,19 @@ type DestinationConfig struct {
 	Postgres    PostgresDestinationConfig
 	Kafka       KafkaDestinationConfig
 	RabbitMQ    RabbitMQDestinationConfig
+	BigQuery    BigQueryDestinationConfig
 }
 
 type PostgresDestinationConfig struct {
 	ConnectionString          string `env:"DESTINATION_POSTGRES_CONNECTION_STRING"`
 	PersistRawTransactionLogs bool   `env:"DESTINATION_POSTGRES_PERSIST_RAW_TRANSACTION_LOGS"`
+}
+
+type BigQueryDestinationConfig struct {
+	ProjectId                 string `env:"DESTINATION_BIGQUERY_PROJECT_ID"`
+	Dataset                   string `env:"DESTINATION_BIGQUERY_DATASET"`
+	DeliveryGuarantee         string `env:"DESTINATION_BIGQUERY_DELIVERY_GUARANTEE,default=AT_LEAST_ONCE"`
+	PersistRawTransactionLogs bool   `env:"DESTINATION_BIGQUERY_PERSIST_RAW_TRANSACTION_LOGS"`
 }
 
 type RabbitMQDestinationConfig struct {

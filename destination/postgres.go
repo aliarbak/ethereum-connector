@@ -7,7 +7,6 @@ import (
 	connectorerrors "github.com/aliarbak/ethereum-connector/errors"
 	"github.com/aliarbak/ethereum-connector/model"
 	"github.com/aliarbak/ethereum-connector/scripts/postgres"
-	"github.com/aliarbak/ethereum-connector/utils"
 	"github.com/jackc/pgx/v5"
 	"os"
 	"time"
@@ -17,7 +16,6 @@ var (
 	transactionColumns       = []string{"hash", "index", "block_hash", "chain_id", "contract_address", "to", "value"}
 	transactionLogColumns    = []string{"hash", "index", "transaction_hash", "contract_address", "event_name", "event_alias", "data"}
 	rawTransactionLogColumns = []string{"hash", "index", "chain_id", "block_number", "transaction_hash", "contract_address", "log"}
-	extractedLogFields       = []string{model.EventNameLogField, model.EventAliasLogField, model.ContractAddressLogField, model.LogHashLogField, model.LogIndexLogField, model.RawDataLogField}
 )
 
 type postgresDestinationFactory struct {
@@ -260,17 +258,4 @@ func (r postgresDestination) execSqlFromFile(ctx context.Context, file string, p
 	sql := string(sqlFile)
 	_, err = r.conn.Exec(ctx, sql, params...)
 	return err
-}
-
-func getLogDataMap(originalMap map[string]interface{}) map[string]interface{} {
-	data := map[string]interface{}{}
-	for k, v := range originalMap {
-		if utils.StringArrayContains(extractedLogFields, k) {
-			continue
-		}
-
-		data[k] = v
-	}
-
-	return data
 }

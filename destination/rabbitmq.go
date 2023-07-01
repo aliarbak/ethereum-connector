@@ -40,6 +40,10 @@ func newRabbitMQFactory(config configs.RabbitMQDestinationConfig) Factory {
 }
 
 func (f *rabbitmqDestinationFactory) CreateDestination(context.Context) (dest Destination, err error) {
+	if f.config.DeliveryGuarantee != string(AtLeastOnceDeliveryGuarantee) && f.config.DeliveryGuarantee != string(AtMostOnceDeliveryGuarantee) {
+		return nil, errors.InvalidInput("invalid rabbitmq destination delivery guarantee: %s", f.config.DeliveryGuarantee)
+	}
+
 	channel, err := f.connection.Channel()
 	if err != nil {
 		return dest, err

@@ -479,10 +479,22 @@ func (r postgresDataSource) updateBlockNumberAndPersistRawLogs(ctx context.Conte
 	)
 
 	if err != nil {
+		if connectorerrors.IsPostgresDuplicateKeyError(err) {
+			return nil
+		}
+
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if err = tx.Commit(ctx); err != nil {
+		if connectorerrors.IsPostgresDuplicateKeyError(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	return err
 }
 
 func (r postgresDataSource) init(ctx context.Context) (err error) {
