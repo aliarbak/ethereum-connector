@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/aliarbak/ethereum-connector/configs"
-	"github.com/aliarbak/ethereum-connector/destination/message"
+	destmessage "github.com/aliarbak/ethereum-connector/destination/message"
 	connectorerrors "github.com/aliarbak/ethereum-connector/errors"
 	"github.com/aliarbak/ethereum-connector/model"
 	bigqueryscript "github.com/aliarbak/ethereum-connector/scripts/bigquery"

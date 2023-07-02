@@ -1,4 +1,4 @@
-package destmessage
+package message
 
 import (
 	"encoding/json"
