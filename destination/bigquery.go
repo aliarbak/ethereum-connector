@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/aliarbak/ethereum-connector/configs"
-	"github.com/aliarbak/ethereum-connector/destination/proto"
+	"github.com/aliarbak/ethereum-connector/destination/message"
 	connectorerrors "github.com/aliarbak/ethereum-connector/errors"
 	"github.com/aliarbak/ethereum-connector/model"
 	bigqueryscript "github.com/aliarbak/ethereum-connector/scripts/bigquery"
@@ -75,7 +75,7 @@ func (r bigqueryDestination) SendSyncLogs(ctx context.Context, block model.Block
 	}
 
 	if len(transactionLogData) > 0 {
-		if err = r.sendMessages(ctx, "transaction_log", (&protomessage.TransactionLog{}).ProtoReflect(), transactionLogData); err != nil {
+		if err = r.sendMessages(ctx, "transaction_log", (&destmessage.TransactionLog{}).ProtoReflect(), transactionLogData); err != nil {
 			return err
 		}
 	}
@@ -87,7 +87,7 @@ func (r bigqueryDestination) sendBlockMessage(ctx context.Context, block model.B
 	var opts proto.MarshalOptions
 	var data [][]byte
 
-	blockMessage := protomessage.NewProtoBlockMessage(block)
+	blockMessage := destmessage.NewProtoBlockMessage(block)
 
 	buf, err := opts.Marshal(&blockMessage)
 	if err != nil {
@@ -105,18 +105,18 @@ func (r bigqueryDestination) sendTransactions(ctx context.Context, block model.B
 		return err
 	}
 
-	if err = r.sendMessages(ctx, "transaction", (&protomessage.Transaction{}).ProtoReflect(), transactionData); err != nil {
+	if err = r.sendMessages(ctx, "transaction", (&destmessage.Transaction{}).ProtoReflect(), transactionData); err != nil {
 		return err
 	}
 
 	if len(transactionLogData) > 0 {
-		if err = r.sendMessages(ctx, "transaction_log", (&protomessage.TransactionLog{}).ProtoReflect(), transactionLogData); err != nil {
+		if err = r.sendMessages(ctx, "transaction_log", (&destmessage.TransactionLog{}).ProtoReflect(), transactionLogData); err != nil {
 			return err
 		}
 	}
 
 	if r.persistRawTransactionLogs && len(rawTransactionLogData) > 0 {
-		if err = r.sendMessages(ctx, "raw_transaction_log", (&protomessage.RawTransactionLog{}).ProtoReflect(), rawTransactionLogData); err != nil {
+		if err = r.sendMessages(ctx, "raw_transaction_log", (&destmessage.RawTransactionLog{}).ProtoReflect(), rawTransactionLogData); err != nil {
 			return err
 		}
 	}
@@ -182,7 +182,7 @@ func (r bigqueryDestination) sendMessages(ctx context.Context, table string, mes
 func (r bigqueryDestination) prepareTransactionMessages(block model.Block) (transactionData [][]byte, transactionLogData [][]byte, rawTransactionLogData [][]byte, err error) {
 	var opts proto.MarshalOptions
 	for _, transaction := range block.Transactions {
-		transactionMessage := protomessage.NewProtoTransactionMessage(block, transaction)
+		transactionMessage := destmessage.NewProtoTransactionMessage(block, transaction)
 		buf, err := opts.Marshal(&transactionMessage)
 		if err != nil {
 			return transactionData, transactionLogData, rawTransactionLogData, connectorerrors.From(err, "transaction protobuf marshall failed for txHash: %s", transaction.Hash)
@@ -190,7 +190,7 @@ func (r bigqueryDestination) prepareTransactionMessages(block model.Block) (tran
 		transactionData = append(transactionData, buf)
 
 		for _, transactionLog := range transaction.Logs {
-			rawTransactionLogMessage := protomessage.NewProtoRawTransactionLogMessage(block, transaction, transactionLog)
+			rawTransactionLogMessage := destmessage.NewProtoRawTransactionLogMessage(block, transaction, transactionLog)
 			buf, err = opts.Marshal(&rawTransactionLogMessage)
 			if err != nil {
 				return transactionData, transactionLogData, rawTransactionLogData, connectorerrors.From(err, "raw transaction log protobuf marshall failed for txHash: %s, logIndex: %d", transaction.Hash, transactionLog[model.LogIndexLogField])
@@ -202,7 +202,7 @@ func (r bigqueryDestination) prepareTransactionMessages(block model.Block) (tran
 				continue
 			}
 
-			transactionLogMessage, err := protomessage.NewProtoTransactionLogMessage(block, transaction, transactionLog)
+			transactionLogMessage, err := destmessage.NewProtoTransactionLogMessage(block, transaction, transactionLog)
 			if err != nil {
 				return transactionData, transactionLogData, rawTransactionLogData, err
 			}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/aliarbak/ethereum-connector/configs"
+	destmessage "github.com/aliarbak/ethereum-connector/destination/message"
 	"github.com/aliarbak/ethereum-connector/errors"
 	"github.com/aliarbak/ethereum-connector/model"
 	"github.com/rs/zerolog/log"
@@ -71,14 +72,14 @@ func (r rabbitmqDestination) SendBlock(_ context.Context, block model.Block) (er
 	}
 
 	if len(r.blocksExchangeName) > 0 {
-		if err = r.publishMessage(r.blocksExchangeName, newBlockMessage(block)); err != nil {
+		if err = r.publishMessage(r.blocksExchangeName, destmessage.NewBlockMessage(block)); err != nil {
 			return r.rollbackTx(err)
 		}
 	}
 
 	for _, transaction := range block.Transactions {
 		if len(r.transactionsExchangeName) > 0 {
-			if err = r.publishMessage(r.transactionsExchangeName, newTransactionMessage(block, transaction)); err != nil {
+			if err = r.publishMessage(r.transactionsExchangeName, destmessage.NewTransactionMessage(block, transaction)); err != nil {
 				return r.rollbackTx(err)
 			}
 		}
@@ -94,7 +95,7 @@ func (r rabbitmqDestination) SendBlock(_ context.Context, block model.Block) (er
 				continue
 			}
 
-			transactionLogMessageValue := newTransactionLogMessage(block, transaction, transactionLog)
+			transactionLogMessageValue := destmessage.NewTransactionLogMessage(block, transaction, transactionLog)
 			if len(r.transactionLogsExchangeName) > 0 {
 				if err = r.publishMessage(r.transactionLogsExchangeName, transactionLogMessageValue); err != nil {
 					return r.rollbackTx(err)
@@ -128,7 +129,7 @@ func (r rabbitmqDestination) SendSyncLogs(_ context.Context, block model.Block) 
 				continue
 			}
 
-			transactionLogMessageValue := newTransactionLogMessage(block, transaction, transactionLog)
+			transactionLogMessageValue := destmessage.NewTransactionLogMessage(block, transaction, transactionLog)
 			if len(r.transactionLogsExchangeName) > 0 {
 				if err = r.publishMessage(r.transactionLogsExchangeName, transactionLogMessageValue); err != nil {
 					return r.rollbackTx(err)

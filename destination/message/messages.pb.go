@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.31.0
 // 	protoc        v4.23.3
-// source: messages.proto
+// source: messages.message
 
-package protomessage
+package destmessage
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"

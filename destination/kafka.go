@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Shopify/sarama"
 	"github.com/aliarbak/ethereum-connector/configs"
+	destmessage "github.com/aliarbak/ethereum-connector/destination/message"
 	"github.com/aliarbak/ethereum-connector/errors"
 	"github.com/aliarbak/ethereum-connector/model"
 	"github.com/aliarbak/ethereum-connector/utils"
@@ -129,7 +130,7 @@ func (r kafkaDestination) abortTxn(err error) error {
 
 func (r kafkaDestination) prepareMessages(block model.Block) (messages []*sarama.ProducerMessage, err error) {
 	if len(r.blocksTopicName) > 0 {
-		blockMessage, err := r.newMessage(r.blocksTopicName, block.Number.String(), newBlockMessage(block))
+		blockMessage, err := r.newMessage(r.blocksTopicName, block.Number.String(), destmessage.NewBlockMessage(block))
 		if err != nil {
 			return messages, errors.From(err, "block message initialization failed, blockNumber: %s", block.Number.String())
 		}
@@ -139,7 +140,7 @@ func (r kafkaDestination) prepareMessages(block model.Block) (messages []*sarama
 
 	for _, transaction := range block.Transactions {
 		if len(r.transactionsTopicName) > 0 {
-			transactionMessage, err := r.newMessage(r.transactionsTopicName, transaction.Hash, newTransactionMessage(block, transaction))
+			transactionMessage, err := r.newMessage(r.transactionsTopicName, transaction.Hash, destmessage.NewTransactionMessage(block, transaction))
 			if err != nil {
 				return messages, errors.From(err, "transaction message initialization failed, txHash: %s", transaction.Hash)
 			}
@@ -161,7 +162,7 @@ func (r kafkaDestination) prepareMessages(block model.Block) (messages []*sarama
 				continue
 			}
 
-			transactionLogMessageValue := newTransactionLogMessage(block, transaction, transactionLog)
+			transactionLogMessageValue := destmessage.NewTransactionLogMessage(block, transaction, transactionLog)
 			if len(r.transactionLogsTopicName) > 0 {
 				transactionLogMessage, err := r.newMessage(r.transactionLogsTopicName, transactionLog[model.ContractAddressLogField].(string), transactionLogMessageValue)
 				if err != nil {
@@ -196,7 +197,7 @@ func (r kafkaDestination) prepareSyncMessages(block model.Block) (messages []*sa
 				continue
 			}
 
-			transactionLogMessageValue := newTransactionLogMessage(block, transaction, transactionLog)
+			transactionLogMessageValue := destmessage.NewTransactionLogMessage(block, transaction, transactionLog)
 			if len(r.transactionLogsTopicName) > 0 {
 				transactionLogMessage, err := r.newMessage(r.transactionLogsTopicName, transactionLog[model.ContractAddressLogField].(string), transactionLogMessageValue)
 				if err != nil {
